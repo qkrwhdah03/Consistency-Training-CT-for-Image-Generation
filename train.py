@@ -29,7 +29,7 @@ def train_model(
     save_dir="./results",
     device="cpu",
     log_interval=500,
-    save_interval=10000,
+    save_interval=5000,
     model_config=None
 ):
     """
@@ -83,12 +83,11 @@ def train_model(
         data = next(train_iterator)
         data = data.to(device)
         
-        # Generate noise
-        noise = data.clone()
+        # Generate noise - nothing to do for CM
         
         # Compute loss
         try:
-            loss = model.compute_loss(data, noise)
+            loss = model.compute_loss(data, iteration)
         except NotImplementedError:
             print("Error: compute_loss method not implemented!")
             print("Please implement the compute_loss method in your model class.")
@@ -103,6 +102,8 @@ def train_model(
         optimizer.step()
         
         train_losses.append(loss.item())
+
+        model.update_teacher()
         
         # Update progress bar
         pbar.set_postfix({"Loss": f"{loss.item():.4f}"})
@@ -110,7 +111,7 @@ def train_model(
         # Logging and save loss curve
         if (iteration + 1) % log_interval == 0:
             avg_loss = sum(train_losses[-log_interval:]) / min(log_interval, len(train_losses))
-            print(f"Iteration {iteration+1}/{num_iterations}, Loss: {loss.item():.4f}, Avg Loss: {avg_loss:.4f}")
+            tqdm.write(f"Iteration {iteration+1}/{num_iterations}, Loss: {loss.item():.4f}, Avg Loss: {avg_loss:.4f}")
             
             # Save training loss curve
             try:
@@ -133,10 +134,11 @@ def train_model(
             print(f"\n  Checkpoint saved: {checkpoint_path}")
             print(f"  Config saved: {checkpoint_path.parent / 'model_config.json'}")
         
+            '''
             # Generate samples
             print("\n  Generating samples...")
             model.eval()
-            shape = (4, 3, 64, 64)
+            shape = (2, 3, 64, 64)
             samples = model.sample(shape, 
                                     num_inference_timesteps=20)
             model.train()
@@ -145,6 +147,7 @@ def train_model(
             pil_images = tensor_to_pil_image(samples)
             for i, img in enumerate(pil_images):
                 img.save(save_dir / f"iter={iteration+1}_sample_{i}.png")
+            '''
                 
     # Save final model
     final_path = save_dir / "final_model.pt"
@@ -176,11 +179,12 @@ def main(args):
     print("Creating model...")
 
     # Prepare kwargs for create_custom_model from args
-    model_kwargs = {}
+    model_kwargs = {
+    }
     # Pass all custom arguments except training-specific ones
     # Network hyperparameters (ch, ch_mult, attn, num_res_blocks, dropout) are FIXED
     # Students can add their own custom arguments for scheduler/model configuration
-    excluded_keys = ['device', 'batch_size', 'num_iterations', 
+    excluded_keys = ['device', 'batch_size', 
                      'lr', 'save_dir', 'log_interval', 'save_interval', 'seed']
     for key, value in args.__dict__.items():
         if key not in excluded_keys and value is not None:
@@ -254,7 +258,7 @@ if __name__ == "__main__":
                        help="Device to run training on")
     parser.add_argument("--log_interval", type=int, default=100,
                        help="Interval for logging")
-    parser.add_argument("--save_interval", type=int, default=10000,
+    parser.add_argument("--save_interval", type=int, default=5000,
                        help="Interval for saving checkpoints and samples")
     parser.add_argument("--seed", type=int, default=42,
                        help="Random seed for reproducibility (default: 42)")
@@ -266,6 +270,15 @@ if __name__ == "__main__":
                        help="Use additional condition embedding in U-Net (e.g., step size for Shortcut Models or end timestep for Consistency Trajectory Models)")
     parser.add_argument("--num_train_timesteps", type=int, default=1000,
                        help="Number of training timesteps for scheduler")
+    parser.add_argument("--t_min", type=float, default= 0.002)
+    parser.add_argument("--t_max", type=float, default= 80)
+    parser.add_argument("--rho", type=float, default= 7.0)
+    parser.add_argument("--s0", type= int, default= 10)
+    parser.add_argument("--s1", type= int, default= 1280)
+    parser.add_argument("--p_mean", type= float, default= -1.1)
+    parser.add_argument("--p_std", type= float, default= 2.0)
+    parser.add_argument("--d", type= int, default= 64*64*3)
+    parser.add_argument("--sigma_data", type= float, default= 0.5)
     
     # Students can add their own custom arguments below for their implementation
     # For example:

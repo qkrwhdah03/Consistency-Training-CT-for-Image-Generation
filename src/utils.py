@@ -1,7 +1,7 @@
 import random
 import torch
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Tuple, Union
 from pathlib import Path
 from PIL import Image
 import numpy as np
@@ -129,3 +129,10 @@ def load_model(checkpoint_path: str, create_model_fn, device: str = "cpu", confi
         model.load_state_dict(checkpoint)
     
     return model
+
+
+def pseudo_huber(x: torch.Tensor, y: torch.Tensor, c: float, dim: Union[int, Tuple[int, ...]]):
+    diff = x - y
+    squared_norm = torch.sum(diff**2, dim= dim)
+    loss = torch.sqrt(squared_norm + c**2) - c
+    return loss
