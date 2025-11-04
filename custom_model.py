@@ -222,16 +222,16 @@ class CMGenerativeModel(BaseGenerativeModel):
         x_t_i = self.scheduler.forward_process(data, noise, t_i)
         x_t_i_p1 = self.scheduler.forward_process(data, noise, t_i_p1)
 
-        pred_t_i = self.predict(x_t_i, t_i)
         with torch.no_grad():
-            pred_t_i_p1 = self.predict_with_teacher(x_t_i_p1, t_i_p1)
+            pred_t_i = self.predict_with_teacher(x_t_i, t_i)
+        pred_t_i_p1 = self.predict(x_t_i_p1, t_i_p1)
 
         weight = self.scheduler.lambda_weight(timesteps_pair) # (B,)
         dis = pseudo_huber(pred_t_i, pred_t_i_p1, self.c, dim=(1,2,3)) # (B,)
 
         return (weight * dis).mean()
     
-    def update_teacher(self, decay = 1.0):
+    def update_teacher(self, decay = 0.0):
         with torch.no_grad():
             student_params = self.network.parameters()
             teacher_params = self.teacher.parameters()
