@@ -45,7 +45,7 @@ def tensor_to_pil_image(tensor: torch.Tensor):
     # Handle 3D tensors (single image)
     if tensor.ndim == 3:
         tensor = tensor.unsqueeze(0)
-    single_image = tensor.shape[0] == 1
+    # single_image = tensor.shape[0] == 1
 
     # denormalize from [-1, 1] to [0, 1]
     tensor = (tensor * 0.5 + 0.5)
@@ -57,8 +57,8 @@ def tensor_to_pil_image(tensor: torch.Tensor):
     tensor = tensor.clone().detach().cpu().permute(0,2,3,1).numpy()
     images = (tensor * 255).round().astype("uint8")
     images = [Image.fromarray(image) for image in images]
-    if single_image:
-        return images[0]
+    #if single_image:
+    #    return images[0]
     return images
 
 
