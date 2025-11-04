@@ -134,20 +134,21 @@ def train_model(
             print(f"\n  Checkpoint saved: {checkpoint_path}")
             print(f"  Config saved: {checkpoint_path.parent / 'model_config.json'}")
         
-            '''
+            
             # Generate samples
             print("\n  Generating samples...")
             model.eval()
-            shape = (2, 3, 64, 64)
-            samples = model.sample(shape, 
-                                    num_inference_timesteps=20)
-            model.train()
+            with torch.no_grad():
+                shape = (1, 3, 64, 64)
+                samples = model.sample(shape, 
+                                        num_inference_timesteps=20)
+                model.train()
+                
+                # Save samples
+                pil_images = tensor_to_pil_image(samples)
+                for i, img in enumerate(pil_images):
+                    img.save(save_dir / f"iter={iteration+1}_sample_{i}.png")
             
-            # Save samples
-            pil_images = tensor_to_pil_image(samples)
-            for i, img in enumerate(pil_images):
-                img.save(save_dir / f"iter={iteration+1}_sample_{i}.png")
-            '''
                 
     # Save final model
     final_path = save_dir / "final_model.pt"
